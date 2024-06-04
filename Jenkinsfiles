@@ -8,7 +8,7 @@ pipeline {
 */
     environment {
         registry = "joey00243/vprofileapp"
-        registryCredential = 'dockerhub'
+        registryCredential = "dockerhub"
     }
 
     stages{
@@ -48,32 +48,6 @@ pipeline {
             }
         }
 
-
-        stage('Building image') {
-            steps{
-              script {
-                dockerImage = docker.build registry + ":$BUILD_NUMBER"
-              }
-            }
-        }
-        
-        stage('Deploy Image') {
-          steps{
-            script {
-              docker.withRegistry( '', registryCredential ) {
-                dockerImage.push("$BUILD_NUMBER")
-                dockerImage.push('latest')
-              }
-            }
-          }
-        }
-
-        stage('Remove Unused docker image') {
-          steps{
-            sh "docker rmi $registry:$BUILD_NUMBER"
-          }
-        }
-
         stage('CODE ANALYSIS with SONARQUBE') {
 
             environment {
@@ -97,6 +71,32 @@ pipeline {
                 }
             }
         }
+
+        stage ('Build App Image') {
+            steps {
+                script {
+                    dockerImage = docker.build registry + ":V$BUILD_NUMBER"
+                }
+            }
+        }
+
+        stage ('Upload Image') {
+            steps {
+                script {
+                    docker.withRegistry('', registryCredential) {
+                        dockerImage.push("V$BUILD_NUMBER")
+                        dockerImage.push('latest')
+                    }
+                }
+            }
+        }
+
+        stage('Remove Unused docker image'){
+            steps{
+                sh "docker rmi $registry:V$BUILD_NUMBER"
+            }
+        }
+
         stage('Kubernetes Deploy') {
 	  agent { label 'KOPS' }
             steps {
@@ -105,6 +105,5 @@ pipeline {
         }
 
     }
-
 
 }
